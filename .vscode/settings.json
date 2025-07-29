@@ -1,0 +1,8 @@
+{
+  "python.defaultInterpreterPath": "C:/Users/60111/AppData/Local/Programs/Python/Python311/python.exe",
+  "python.analysis.extraPaths": [
+    "C:\\Users\\60111\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages"
+  ],
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["tests"]
+}
