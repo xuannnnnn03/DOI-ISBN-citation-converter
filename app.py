@@ -9,7 +9,7 @@ import json
 app = FastAPI()
 
 # Connect to or create DuckDB database
-con = duckdb.connect(database="db/citations.db")
+con = duckdb.connect(database="db/citations.db", read_only=True)
 con.execute("""
 CREATE TABLE IF NOT EXISTS metadata_cache (
     identifier TEXT PRIMARY KEY,
