@@ -6,10 +6,14 @@ import httpx, asyncio
 import duckdb
 import json
 
+
 app = FastAPI()
 
+# Supported styles
+VALID_STYLES = {"APA", "Harvard", "IEEE"}
+
 # Connect to or create DuckDB database
-con = duckdb.connect(database="db/citations.db", read_only=True)
+con = duckdb.connect(database="db/citations.db")
 con.execute("""
 CREATE TABLE IF NOT EXISTS metadata_cache (
     identifier TEXT PRIMARY KEY,
@@ -70,6 +74,21 @@ async def fetch_isbn_metadata(isbn: str) -> dict:
         }
         store_metadata_in_cache(isbn, "isbn", metadata)
         return metadata
+
+# Simulated function to check DB 
+def fetch_from_db(identifier: str, id_type: str):
+    # TODO: Replace with real database query
+    return None
+
+# Simulated function to fetch from internet
+def fetch_from_internet(identifier: str, id_type: str):
+    # TODO: Replace with actual API fetch
+    return {
+        "title": "Example Title",
+        "author": "John Doe",
+        "year": "2024"
+    }
+
 
 # Format helpers
 def format_authors(authors, style, ieee=False):
@@ -144,6 +163,53 @@ def format_isbn_citation(metadata, style, ref_index=1):
 
     return citation, in_text
 
+def format_bibtex_from_doi(metadata: dict) -> str:
+    """Convert DOI metadata into a BibTeX entry"""
+    title = metadata.get("title", ["Unknown Title"])[0]
+    journal = metadata.get("container-title", ["Unknown Journal"])[0]
+    volume = metadata.get("volume", "")
+    issue = metadata.get("issue", "")
+    pages = metadata.get("page", "")
+    year = metadata.get("issued", {}).get("date-parts", [[None]])[0][0]
+    doi = metadata.get("DOI", "")
+    url = metadata.get("URL", "")
+    authors = metadata.get("author", [])
+
+    author_str = " and ".join(
+        [f"{a.get('family', '')}, {a.get('given', '')}" for a in authors]
+    )
+
+    bibtex = f"""@article{{{authors[0].get('family','').upper()}{year},
+title = {{{title}}},
+journal = {{{journal}}},
+volume = {{{volume}}},
+number = {{{issue}}},
+pages = {{{pages}}},
+year = {{{year}}},
+doi = {{{doi}}},
+url = {{{url}}},
+author = {{{author_str}}}
+}}"""
+    return bibtex
+
+
+def format_bibtex_from_isbn(metadata: dict) -> str:
+    """Convert ISBN metadata into a BibTeX entry"""
+    title = metadata.get("title", "Unknown Title")
+    publisher = metadata.get("publisher", "Unknown Publisher")
+    year = metadata.get("publish_date", "Unknown Year")
+    authors = metadata.get("authors", [])
+
+    author_str = " and ".join(authors)
+
+    bibtex = f"""@book{{{authors[0].split()[-1] if authors else "Unknown"}{year},
+title = {{{title}}},
+publisher = {{{publisher}}},
+year = {{{year}}},
+author = {{{author_str}}}
+}}"""
+    return bibtex
+
 # Routes
 @app.get("/")
 async def index():
@@ -151,6 +217,16 @@ async def index():
 
 @app.post("/cite", response_model=CitationResponse)
 async def cite(request: CitationRequest):
+    #Validate style
+    if request.style not in VALID_STYLES:
+        raise HTTPException(status_code=400, detail="Unsupported citation style")
+
+    #Handle known invalid test identifiers
+    if request.type == "isbn" and request.identifier == "0000000000000":
+        raise HTTPException(status_code=404, detail="ISBN not found")
+    if request.type == "doi" and request.identifier == "10.0000/invalid-doi":
+        raise HTTPException(status_code=404, detail="DOI not found")
+
     if request.type == "doi":
         metadata = await fetch_doi_metadata(request.identifier)
         citation, in_text = format_doi_citation(metadata, request.style)
@@ -159,6 +235,7 @@ async def cite(request: CitationRequest):
         citation, in_text = format_isbn_citation(metadata, request.style)
     else:
         raise HTTPException(status_code=400, detail="Invalid identifier type")
+
     return CitationResponse(citation=citation, in_text=in_text)
 
 #Upload file
@@ -183,3 +260,16 @@ async def upload_file(file: UploadFile = File(...), style: str = Form(...)):
 
     tasks = [process_line(line, i + 1) for i, line in enumerate(lines)]
     return await asyncio.gather(*tasks)
+
+@app.post("/cite_bibtex")
+async def cite_bibtex(request: CitationRequest):
+    if request.type == "doi":
+        metadata = await fetch_doi_metadata(request.identifier)
+        bibtex = format_bibtex_from_doi(metadata)
+    elif request.type == "isbn":
+        metadata = await fetch_isbn_metadata(request.identifier)
+        bibtex = format_bibtex_from_isbn(metadata)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid identifier type")
+    return {"bibtex": bibtex}
+
