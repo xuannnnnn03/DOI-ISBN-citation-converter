@@ -1,8 +1,10 @@
 import pytest
+import requests
 from fastapi.testclient import TestClient
-from app import app  # Make sure your FastAPI instance is called 'app'
+from app import app 
 
 client = TestClient(app)
+DEPLOYED_URL = "https://citationconverter.duckdns.org/"
 
 def test_root_get():
     response = client.get("/")
@@ -66,3 +68,19 @@ def test_cite_unsupported_style():
     }
     response = client.post("/cite", json=payload)
     assert response.status_code in [400, 422]
+
+def test_deployed_root_get():
+    response = requests.get(f"{DEPLOYED_URL}/")
+    assert response.status_code == 200
+
+def test_deployed_cite_doi_existing():
+    payload = {
+        "identifier": "10.1016/S1874-1029(13)60024-5",
+        "type": "doi",
+        "style": "APA"
+    }
+    response = requests.post(f"{DEPLOYED_URL}/cite", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "citation" in data
+    assert "in_text" in data
