@@ -505,6 +505,12 @@
 
 
 <script>
+
+  function toggleAccordion(element) {
+  element.classList.toggle('active');
+  element.nextElementSibling.classList.toggle('active');
+}
+
 async function handleGenerate() {
   const citationBody = document.getElementById("citationBody");
   citationBody.innerHTML = "<tr><td colspan='2'>Generating...</td></tr>";
