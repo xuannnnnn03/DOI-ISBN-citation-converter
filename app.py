@@ -6,6 +6,8 @@ import httpx, asyncio
 import duckdb
 import json
 from typing import Optional
+import re
+from functools import partial
 
 app = FastAPI()
 
@@ -213,6 +215,35 @@ author = {{{author_str}}}
 }}"""
     return bibtex
 
+# --- helper utilities -----------------------------------------------------
+DOI_PREFIXES = (
+    "https://doi.org/",
+    "http://doi.org/",
+    "https://dx.doi.org/",
+    "http://dx.doi.org/",
+)
+
+def sanitize_identifier(line: str) -> str:
+    s = line.strip()
+    # remove common DOI URL prefixes
+    for p in DOI_PREFIXES:
+        if s.lower().startswith(p):
+            s = s[len(p):]
+            break
+    # remove surrounding angle brackets sometimes present in lists
+    s = s.strip("<>")
+    return s
+
+def looks_like_isbn(s: str) -> bool:
+    # allow digits, hyphens and terminal X/x (ISBN-10)
+    s2 = s.replace("-", "").replace(" ", "")
+    return bool(re.fullmatch(r"\d{9}[\dXx]|\d{13}", s2))
+
+def is_doi_candidate(s: str) -> bool:
+    # basic DOI detection: starts with 10. and contains a slash,
+    # or typical DOI pattern
+    return s.startswith("10.") and "/" in s or bool(re.search(r"10\.\d{4,9}/\S+", s))
+
 # Routes
 @app.get("/")
 async def index():
@@ -247,26 +278,65 @@ async def upload_file(file: UploadFile = File(...), style: str = Form(...)):
     if not file.filename.endswith(".txt"):
         raise HTTPException(status_code=400, detail="Only .txt files are supported.")
 
-    content = await file.read()
-    lines = [line.strip() for line in content.decode().splitlines() if line.strip()]
+    # read & decode safely
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8")
+    except Exception:
+        text = raw.decode("utf-8", errors="ignore")
 
-    async def process_line(line, index):
-        if line.startswith("10.") or "/" in line:  # DOI
-            metadata = await fetch_doi_metadata(line)
-            citation, in_text = format_doi_citation(metadata, style, ref_index=index)
-            bibtex = format_bibtex_from_doi(metadata)
-        elif line.isdigit():  # ISBN
-            metadata = await fetch_isbn_metadata(line)
-            citation, in_text = format_isbn_citation(metadata, style, ref_index=index)
-            bibtex = format_bibtex_from_isbn(metadata)
-        else:
-            return ExtendedCitationResponse(citation=f"Invalid identifier: {line}", in_text="", bibtex=None)
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
 
-        return ExtendedCitationResponse(citation=citation, in_text=in_text, bibtex=bibtex)
+    # reuse a single AsyncClient for all requests
+    client = httpx.AsyncClient(timeout=30.0)
+    semaphore = asyncio.Semaphore(8)  # limit concurrent external requests
 
+    async def safe_fetch_doi_metadata(doi: str):
+        async with semaphore:
+            return await fetch_doi_metadata(doi)
+
+    async def safe_fetch_isbn_metadata(isbn: str):
+        async with semaphore:
+            return await fetch_isbn_metadata(isbn)
+
+    async def process_line(line: str, index: int):
+        identifier = sanitize_identifier(line)
+        try:
+            # detect type robustly
+            if is_doi_candidate(identifier) or "/" in identifier:
+                # ensure we pass a bare DOI (without URL)
+                id_for_fetch = identifier
+                # remove url fragments if any
+                for p in DOI_PREFIXES:
+                    if id_for_fetch.lower().startswith(p):
+                        id_for_fetch = id_for_fetch[len(p):]
+                metadata = await safe_fetch_doi_metadata(id_for_fetch)
+                citation, in_text = format_doi_citation(metadata, style, ref_index=index)
+                bibtex = format_bibtex_from_doi(metadata)
+                return ExtendedCitationResponse(citation=citation, in_text=in_text, bibtex=bibtex)
+            elif looks_like_isbn(identifier):
+                # normalize ISBN to digits only for OpenLibrary lookups
+                isbn_norm = re.sub(r"[^0-9Xx]", "", identifier)
+                metadata = await safe_fetch_isbn_metadata(isbn_norm)
+                citation, in_text = format_isbn_citation(metadata, style, ref_index=index)
+                bibtex = format_bibtex_from_isbn(metadata)
+                return ExtendedCitationResponse(citation=citation, in_text=in_text, bibtex=bibtex)
+            else:
+                # Not recognized
+                return ExtendedCitationResponse(citation=f"Invalid identifier: {line}", in_text="", bibtex=None)
+        except HTTPException as he:
+            # return structured error per item instead of failing whole batch
+            return ExtendedCitationResponse(citation=f"Error processing {identifier}: {he.detail}", in_text="", bibtex=None)
+        except Exception as e:
+            # catch-all to keep batch resilient; include error in response for debugging
+            return ExtendedCitationResponse(citation=f"Error processing {identifier}: {str(e)}", in_text="", bibtex=None)
+
+    # create tasks but run sequentially in small batches (gather with semaphore limits above will help)
     tasks = [process_line(line, i + 1) for i, line in enumerate(lines)]
-    return await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks)
 
+    await client.aclose()
+    return results
 
 @app.post("/cite_bibtex")
 async def cite_bibtex(request: CitationRequest):
