@@ -5,7 +5,7 @@ from typing import List
 import httpx, asyncio
 import duckdb
 import json
-
+from typing import Optional
 
 app = FastAPI()
 
@@ -31,6 +31,11 @@ class CitationRequest(BaseModel):
 class CitationResponse(BaseModel):
     citation: str
     in_text: str
+
+class ExtendedCitationResponse(BaseModel):
+    citation: str
+    in_text: str
+    bibtex: Optional[str] = None
 
 # Metadata fetchers with DuckDB cache
 async def fetch_metadata_from_cache(identifier: str, id_type: str):
@@ -88,7 +93,6 @@ def fetch_from_internet(identifier: str, id_type: str):
         "author": "John Doe",
         "year": "2024"
     }
-
 
 # Format helpers
 def format_authors(authors, style, ieee=False):
@@ -192,7 +196,6 @@ author = {{{author_str}}}
 }}"""
     return bibtex
 
-
 def format_bibtex_from_isbn(metadata: dict) -> str:
     """Convert ISBN metadata into a BibTeX entry"""
     title = metadata.get("title", "Unknown Title")
@@ -239,7 +242,7 @@ async def cite(request: CitationRequest):
     return CitationResponse(citation=citation, in_text=in_text)
 
 #Upload file
-@app.post("/upload", response_model=List[CitationResponse])
+@app.post("/upload", response_model=List[ExtendedCitationResponse])
 async def upload_file(file: UploadFile = File(...), style: str = Form(...)):
     if not file.filename.endswith(".txt"):
         raise HTTPException(status_code=400, detail="Only .txt files are supported.")
@@ -248,18 +251,22 @@ async def upload_file(file: UploadFile = File(...), style: str = Form(...)):
     lines = [line.strip() for line in content.decode().splitlines() if line.strip()]
 
     async def process_line(line, index):
-        if line.startswith("10.") or "/" in line:
+        if line.startswith("10.") or "/" in line:  # DOI
             metadata = await fetch_doi_metadata(line)
             citation, in_text = format_doi_citation(metadata, style, ref_index=index)
-        elif line.isdigit():
+            bibtex = format_bibtex_from_doi(metadata)
+        elif line.isdigit():  # ISBN
             metadata = await fetch_isbn_metadata(line)
             citation, in_text = format_isbn_citation(metadata, style, ref_index=index)
+            bibtex = format_bibtex_from_isbn(metadata)
         else:
-            return CitationResponse(citation=f"Invalid identifier: {line}", in_text="")
-        return CitationResponse(citation=citation, in_text=in_text)
+            return ExtendedCitationResponse(citation=f"Invalid identifier: {line}", in_text="", bibtex=None)
+
+        return ExtendedCitationResponse(citation=citation, in_text=in_text, bibtex=bibtex)
 
     tasks = [process_line(line, i + 1) for i, line in enumerate(lines)]
     return await asyncio.gather(*tasks)
+
 
 @app.post("/cite_bibtex")
 async def cite_bibtex(request: CitationRequest):
