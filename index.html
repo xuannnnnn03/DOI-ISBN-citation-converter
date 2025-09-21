@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DOI & ISBN Citation Generator - Debug</title>
+  <title>DOI & ISBN Citation Generator - Fixed</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     :root {
       --primary: #2c3e50;
@@ -12,33 +15,57 @@
       --light: #f8f9fa;
       --dark: #343a40;
       --success: #28a745;
-      --danger: #e74c3c;
       --border-radius: 6px;
       --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      --transition: all 0.2s ease;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
     
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 15px;
       line-height: 1.5;
       background-color: #f0f2f5;
       color: #333;
-      padding: 20px;
-      max-width: 1200px;
+      padding: 15px;
+    }
+    
+    .container {
+      display: flex;
+      max-width: 1400px;
       margin: 0 auto;
+      gap: 20px;
     }
     
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid #ddd;
+    @media (max-width: 992px) {
+      .container {
+        flex-direction: column;
+      }
     }
     
-    h1 {
-      color: var(--primary);
+    .info-section {
+      flex: 1;
+      max-width: 35%;
     }
     
-    .debug-panel {
+    .form-section {
+      flex: 2;
+      max-width: 65%;
+    }
+    
+    @media (max-width: 992px) {
+      .info-section,
+      .form-section {
+        max-width: 100%;
+      }
+    }
+    
+    .card {
       background: white;
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
@@ -46,12 +73,86 @@
       margin-bottom: 20px;
     }
     
-    .debug-title {
+    .card-title {
       font-size: 1.3rem;
       color: var(--primary);
       margin-bottom: 15px;
       padding-bottom: 8px;
       border-bottom: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+    }
+    
+    .card-title i {
+      margin-right: 8px;
+      color: var(--secondary);
+      font-size: 1.2rem;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+    
+    input[type="text"], 
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: var(--border-radius);
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+    
+    input[type="text"]:focus, 
+    select:focus {
+      outline: none;
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+    
+    .file-upload {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+    
+    .file-upload input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    .file-upload-label {
+      display: block;
+      padding: 10px 12px;
+      background: var(--light);
+      border: 1px dashed #ccc;
+      border-radius: var(--border-radius);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 0.95rem;
+    }
+    
+    .file-upload-label:hover {
+      background: #e9ecef;
+      border-color: var(--secondary);
+    }
+    
+    .file-upload-label i {
+      margin-right: 6px;
     }
     
     .btn {
@@ -61,169 +162,764 @@
       color: white;
       border: none;
       border-radius: var(--border-radius);
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      margin-right: 10px;
+      transition: var(--transition);
+      text-align: center;
+    }
+    
+    .btn:hover {
+      background: #2980b9;
+    }
+    
+    .btn-accent {
+      background: var(--accent);
+      color: #333;
+    }
+    
+    .btn-accent:hover {
+      background: #e6c200;
+      color: #000;
+    }
+    
+    .btn-block {
+      display: block;
+      width: 100%;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+    
+    .btn-group .btn {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+    }
+    
+    .citation-result {
+      margin-top: 20px;
+    }
+    
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+    
+    .result-table th, 
+    .result-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid #ddd;
+      vertical-align: top;
+    }
+    
+    .result-table th {
+      background-color: var(--light);
+      font-weight: 600;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+    
+    .result-table tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    
+    .example-list {
+      background: var(--light);
+      padding: 12px;
+      border-radius: var(--border-radius);
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+    
+    .example-list p {
+      margin-bottom: 6px;
+      font-family: monospace;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      padding: 12px 16px;
+      background: var(--success);
+      color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      font-size: 0.9rem;
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    header h1 {
+      color: var(--primary);
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+    
+    header p {
+      color: #666;
+      font-size: 1rem;
+    }
+    
+    .compact-text {
+      font-size: 0.9rem;
       margin-bottom: 10px;
     }
     
-    .btn-danger {
-      background: var(--danger);
+    .citation-text {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      word-break: break-word;
     }
     
-    .btn-success {
-      background: var(--success);
+    .faq-section {
+      margin-top: 30px;
     }
     
-    .test-result {
-      margin-top: 15px;
-      padding: 15px;
+    .faq-title {
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      color: var(--primary);
+      padding-bottom: 6px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .accordion {
+      margin-bottom: 10px;
+    }
+    
+    .accordion-header {
+      padding: 10px 15px;
+      background: var(--secondary);
+      color: white;
       border-radius: var(--border-radius);
-      background: var(--light);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    
+    .accordion-header i {
+      transition: var(--transition);
+      font-size: 0.9rem;
+    }
+    
+    .accordion-content {
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      background: white;
+      border-radius: 0 0 var(--border-radius) var(--border-radius);
+      font-size: 0.9rem;
+    }
+    
+    .accordion-content.active {
+      max-height: 500px;
+      padding: 12px 15px;
+      border: 1px solid #ddd;
+      border-top: none;
+    }
+    
+    .accordion-header.active i {
+      transform: rotate(180deg);
+    }
+
+    .file-upload-box {
+      border: 2px dashed #ccc;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+    
+    .file-upload-box.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background-color: #f5f5f5;
+    }
+    
+    #upload-label {
+      color: #555;
+    }
+    
+    input[type="text"].disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+
+    .input-disabled-note {
+      font-size: 0.8rem;
+      color: #e74c3c;
+      margin-top: 5px;
       display: none;
     }
-    
+
+    .debug-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: var(--border-radius);
+      border: 1px solid #ddd;
+    }
+
+    .debug-btn {
+      background: #6c757d;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    .debug-result {
+      margin-top: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: var(--border-radius);
+      border: 1px solid #ddd;
+      display: none;
+    }
+
     pre {
       background: #2d2d2d;
       color: #f8f8f2;
       padding: 15px;
       border-radius: var(--border-radius);
       overflow: auto;
-      max-height: 300px;
-    }
-    
-    .success {
-      border-left: 4px solid var(--success);
-    }
-    
-    .error {
-      border-left: 4px solid var(--danger);
-    }
-    
-    .endpoint-test {
-      margin-bottom: 15px;
-      padding: 15px;
-      border: 1px solid #ddd;
-      border-radius: var(--border-radius);
-    }
-    
-    .log-output {
-      height: 200px;
-      overflow-y: auto;
-      background: #2d2d2d;
-      color: #f8f8f2;
-      padding: 15px;
-      border-radius: var(--border-radius);
-      margin-top: 20px;
-      font-family: monospace;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>DOI & ISBN Citation Generator - Debug Panel</h1>
-    <p>Debugging BibTeX download issue on DigitalOcean</p>
+    <h1><i class="fas fa-book"></i> DOI & ISBN Citation Generator</h1>
+    <p>Generate accurate citations in APA, Harvard, or IEEE styles</p>
   </header>
 
-  <div class="debug-panel">
-    <h2 class="debug-title">Environment Tests</h2>
-    
-    <div class="endpoint-test">
-      <h3>Test API Endpoints</h3>
-      <p>Check if your API endpoints are responding correctly:</p>
-      <button class="btn" onclick="testEndpoint('/cite', 'POST', {identifier: '10.1038/nature12373', type: 'doi', style: 'APA'})">Test /cite Endpoint</button>
-      <button class="btn" onclick="testEndpoint('/cite_bibtex', 'POST', {identifier: '10.1038/nature12373', type: 'doi', style: 'APA'})">Test /cite_bibtex Endpoint</button>
-      <button class="btn" onclick="testEndpoint('/upload', 'POST', null, true)">Test /upload Endpoint</button>
-      
-      <div id="endpointResult" class="test-result"></div>
+  <div class="container">
+    <div class="info-section">
+      <div class="card">
+        <h2 class="card-title"><i class="fas fa-info-circle"></i> What are DOI & ISBN?</h2>
+        <p class="compact-text"><strong>DOI (Digital Object Identifier)</strong> is a unique alphanumeric string that identifies content and provides a persistent link to its location on the internet.</p>
+        
+        <p class="compact-text"><strong>ISBN (International Standard Book Number)</strong> is a 10 or 13-digit number that uniquely identifies books and book-like products.</p>
+        
+        <div class="example-list">
+          <p><strong>Example DOIs:</strong></p>
+          <p>10.1109/5.771073</p>
+          <p>10.1016/S1874-1029(15)30001-x</p>
+          
+          <p><strong>Example ISBNs:</strong></p>
+          <p>9781455728657</p>
+          <p>9780128205815</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><i class="fas fa-question-circle"></i> How to Use</h2>
+        <ol style="padding-left: 20px; font-size: 0.9rem;">
+          <li>Enter a single DOI or ISBN</li>
+          <li>Or upload a text file with multiple identifiers</li>
+          <li>Select your citation style</li>
+          <li>Click "Generate Citations"</li>
+          <li>Copy or download your citations</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><i class="fas fa-bug"></i> Debug Tools</h2>
+        <p class="compact-text">If you're experiencing issues with BibTeX download, use these tools to diagnose the problem:</p>
+        
+        <button class="btn debug-btn" onclick="testEndpoint('/cite_bibtex', 'POST', {identifier: '10.1038/nature12373', type: 'doi', style: 'APA'})">
+          Test /cite_bibtex Endpoint
+        </button>
+        
+        <button class="btn debug-btn" onclick="testBibTeX('10.1038/nature12373', 'doi')">
+          Test BibTeX Generation
+        </button>
+        
+        <div id="debugResult" class="debug-result"></div>
+      </div>
     </div>
-    
-    <div class="endpoint-test">
-      <h3>Test BibTeX Generation</h3>
-      <p>Test if BibTeX generation is working correctly:</p>
-      <button class="btn btn-success" onclick="testBibTeX('10.1038/nature12373', 'doi')">Test DOI BibTeX</button>
-      <button class="btn btn-success" onclick="testBibTeX('9780451524935', 'isbn')">Test ISBN BibTeX</button>
-      
-      <div id="bibtexResult" class="test-result"></div>
-    </div>
-    
-    <div class="endpoint-test">
-      <h3>Debug Download Function</h3>
-      <p>Test the download function with different scenarios:</p>
-      <button class="btn" onclick="testDownload('single')">Test Single Citation Download</button>
-      <button class="btn" onclick="testDownload('multiple')">Test Multiple Citations Download</button>
-      
-      <div id="downloadResult" class="test-result"></div>
+
+    <div class="form-section">
+      <div class="card">
+        <h2 class="card-title"><i class="fas fa-magic"></i> Generate Citations</h2>
+        
+        <div class="form-group">
+          <label for="input"><i class="fas fa-keyboard"></i> Enter DOI/ISBN:</label>
+          <input type="text" id="input" placeholder="e.g., 10.1109/5.771073 or 9781455728657">
+          <div class="input-disabled-note" id="input-note">Clear the uploaded file to enable text input</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="upload"><i class="fas fa-file-upload"></i> Or Upload a List (.txt):</label>
+          <div class="file-upload-box" id="file-upload-box">
+            <input type="file" id="upload" accept=".txt" hidden>
+            <label for="upload" id="upload-label">Choose file or drag and drop</label>
+          </div>
+          <div class="input-disabled-note" id="upload-note">Clear the text input to enable file upload</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="style"><i class="fas fa-pencil-alt"></i> Select Citation Style:</label>
+          <select id="style">
+            <option>APA</option>
+            <option>Harvard</option>
+            <option>IEEE</option>
+          </select>
+        </div>
+        
+        <button class="btn btn-accent btn-block" onclick="handleGenerate()">
+          <i class="fas fa-bolt"></i> Generate Citations
+        </button>
+        
+        <div class="citation-result">
+          <h3 style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <i class="fas fa-list"></i> Results
+          </h3>
+          
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th style="width: 70%;">Generated Citation</th>
+                <th style="width: 30%;">In-text Citation</th>
+              </tr>
+            </thead>
+            <tbody id="citationBody">
+              <tr>
+                <td colspan="2" style="text-align: center; color: #6c757d; padding: 15px;">
+                  Your citations will appear here
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="btn-group">
+            <button class="btn" onclick="copyCitation()">
+              <i class="fas fa-copy"></i> Copy
+            </button>
+            <select id="formatSelect" style="padding: 8px; border-radius: var(--border-radius); border: 1px solid #ddd;">
+              <option value="txt">TXT</option>
+              <option value="bib">BIB</option>
+            </select>
+            <button class="btn" onclick="downloadCitation()">
+              <i class="fas fa-download"></i> Download
+            </button>
+            <button class="btn" onclick="clearForm()">
+              <i class="fas fa-trash"></i> Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-section">
+        <h2 class="faq-title">Frequently Asked Questions</h2>
+        
+        <div class="accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            What is the difference between DOI and ISBN? <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="accordion-content">
+            <p>DOI is used primarily for journal articles and digital content, providing a persistent link online. ISBN is used for books and book-like products, with each edition having its own ISBN.</p>
+          </div>
+        </div>
+        
+        <div class="accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            Why isn't my DOI/ISBN working? <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="accordion-content">
+            <p>Possible reasons: incorrect identifier entry, resource not in database, very recent publication, or older publication without DOI. Double-check the identifier or create citation manually.</p>
+          </div>
+        </div>
+        
+        <div class="accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            What citation styles are supported? <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="accordion-content">
+            <p>We support APA, Harvard, and IEEE citation styles. These cover most academic formatting requirements.</p>
+          </div>
+        </div>
+
+        <div class="accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            Why is BibTeX download not working? <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="accordion-content">
+            <p>This is usually caused by a missing API endpoint on the server. Make sure your FastAPI application includes the <code>/cite_bibtex</code> endpoint. Check the server logs for more details.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="debug-panel">
-    <h2 class="debug-title">Configuration Check</h2>
-    
-    <div class="endpoint-test">
-      <h3>Environment Variables</h3>
-      <p>Check if your environment is configured correctly:</p>
-      <button class="btn" onclick="checkEnvironment()">Check Environment</button>
-      
-      <div id="environmentResult" class="test-result"></div>
-    </div>
-    
-    <div class="endpoint-test">
-      <h3>API Base URL</h3>
-      <p>Current API base URL: <strong id="apiBaseUrl"></strong></p>
-      <p>If this is incorrect, you may need to set it explicitly in your code.</p>
-    </div>
-  </div>
-
-  <div class="debug-panel">
-    <h2 class="debug-title">Debug Log</h2>
-    <div class="log-output" id="debugLog"></div>
-  </div>
+  <div class="notification" id="notification">Citation copied to clipboard!</div>
 
   <script>
-    // Set the API base URL
-    const apiBaseUrl = window.location.origin;
-    document.getElementById('apiBaseUrl').textContent = apiBaseUrl;
-    
-    // Debug logging function
-    function logDebug(message, type = 'info') {
-      const logElement = document.getElementById('debugLog');
-      const timestamp = new Date().toLocaleTimeString();
-      const logEntry = document.createElement('div');
-      logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> <span style="color: ${type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#339af0'}">${message}</span>`;
-      logElement.appendChild(logEntry);
-      logElement.scrollTop = logElement.scrollHeight;
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set up event listeners for mutual exclusion
+      const inputField = document.getElementById('input');
+      const fileUpload = document.getElementById('upload');
+      const fileUploadBox = document.getElementById('file-upload-box');
+      const inputNote = document.getElementById('input-note');
+      const uploadNote = document.getElementById('upload-note');
+      
+      // Listen for input in the text field
+      inputField.addEventListener('input', function() {
+        if (this.value.trim() !== '') {
+          // Disable file upload when text input has content
+          fileUpload.disabled = true;
+          fileUploadBox.classList.add('disabled');
+          uploadNote.style.display = 'block';
+        } else {
+          // Enable file upload when text input is empty
+          fileUpload.disabled = false;
+          fileUploadBox.classList.remove('disabled');
+          uploadNote.style.display = 'none';
+        }
+      });
+      
+      // Listen for file selection
+      fileUpload.addEventListener('change', function() {
+        if (this.files.length > 0) {
+          // Disable text input when a file is selected
+          inputField.disabled = true;
+          inputField.classList.add('disabled');
+          inputNote.style.display = 'block';
+        } else {
+          // Enable text input when no file is selected
+          inputField.disabled = false;
+          inputField.classList.remove('disabled');
+          inputNote.style.display = 'none';
+        }
+      });
+    });
+
+    function toggleAccordion(element) {
+      element.classList.toggle('active');
+      element.nextElementSibling.classList.toggle('active');
     }
-    
-    // Test API endpoint
-    async function testEndpoint(endpoint, method, data = null, isFormData = false) {
-      const resultElement = document.getElementById('endpointResult');
-      resultElement.style.display = 'block';
+
+    async function handleGenerate() {
+      const citationBody = document.getElementById("citationBody");
+      citationBody.innerHTML = "<tr><td colspan='2'>Generating...</td></tr>";
+
+      const fileInput = document.getElementById("upload");
+      const inputText = document.getElementById("input").value.trim();
+      const style = document.getElementById("style").value;
+
+      if (fileInput.files.length > 0) {
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        formData.append("style", style);
+        const response = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+        citationBody.innerHTML = Array.isArray(data) ? data.map(d =>
+          `<tr><td>${formatCitationHTML(d.citation)}</td><td>${d.in_text}</td></tr>`
+        ).join("") :
+          `<tr><td>${formatCitationHTML(data.citation)}</td><td>${data.in_text}</td></tr>`;
+      } else if (inputText) {
+        let type = "";
+        if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
+        else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
+        else {
+          citationBody.innerHTML = "<tr><td colspan='2'>Invalid DOI or ISBN.</td></tr>";
+          return;
+        }
+
+        const response = await fetch("/cite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier: inputText, type, style }),
+        });
+        const data = await response.json();
+        citationBody.innerHTML = `<tr><td>${formatCitationHTML(data.citation)}</td><td>${data.in_text}</td></tr>`;
+      } else {
+        citationBody.innerHTML = "<tr><td colspan='2'>Please provide a DOI, ISBN, or upload a file.</td></tr>";
+      }
+    }
+
+    function formatCitationHTML(citation) {
+      citation = citation.replace(/\. In\s+/i, '. ');
+      return citation;
+    }
+
+    function copyCitation() {
+      const rows = document.querySelectorAll("#citationBody td:first-child");
+      const text = Array.from(rows).map(row => row.innerText).join("\n\n");
+      navigator.clipboard.writeText(text);
+      showNotification("Citation(s) copied to clipboard!");
+    }
+
+    async function downloadCitation() {
+      const format = document.getElementById("formatSelect").value;
+      const inputText = document.getElementById("input").value.trim();
+      const fileInput = document.getElementById("upload");
+      const style = document.getElementById("style").value;
+
+      if (format === "txt") {
+        const rows = document.querySelectorAll("#citationBody td:first-child");
+        const text = Array.from(rows).map(row => row.innerText).join("\n\n");
+        downloadFile(text, "citations.txt", "text/plain");
+        return;
+      }
+
+      // For BibTeX format
+      if (fileInput.files.length > 0) {
+        // Multiple citations from file
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        formData.append("style", style);
+
+        try {
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          
+          if (Array.isArray(data)) {
+            const bibtexEntries = data.map(item => item.bibtex).filter(entry => entry).join("\n\n");
+            downloadFile(bibtexEntries, "citations.bib", "text/plain");
+          } else {
+            throw new Error("Unexpected response format from server");
+          }
+        } catch (error) {
+          console.error("Error downloading BibTeX:", error);
+          showNotification("Error downloading BibTeX: " + error.message, true);
+        }
+      } else if (inputText) {
+        // Single citation from input
+        let type = "";
+        if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
+        else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
+        else {
+          showNotification("Invalid identifier for BibTeX", true);
+          return;
+        }
+
+        try {
+          const response = await fetch("/cite_bibtex", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identifier: inputText, type, style }),
+          });
+          
+          if (!response.ok) {
+            // If /cite_bibtex endpoint doesn't exist, try fallback to /cite
+            if (response.status === 404) {
+              await fallbackBibTeX(inputText, type, style);
+              return;
+            }
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          downloadFile(data.bibtex, "citation.bib", "text/plain");
+        } catch (error) {
+          console.error("Error downloading BibTeX:", error);
+          showNotification("Error downloading BibTeX: " + error.message, true);
+        }
+      } else {
+        showNotification("Please enter a DOI/ISBN or upload a file first.", true);
+      }
+    }
+
+    async function fallbackBibTeX(identifier, type, style) {
+      // Fallback method if /cite_bibtex endpoint is missing
+      try {
+        // First get the citation data
+        const citeResponse = await fetch("/cite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, type, style }),
+        });
+        
+        if (!citeResponse.ok) {
+          throw new Error(`Server returned ${citeResponse.status}: ${citeResponse.statusText}`);
+        }
+        
+        const citeData = await citeResponse.json();
+        
+        // Generate BibTeX manually as a fallback
+        let bibtex;
+        if (type === "doi") {
+          bibtex = generateDOIBibTeX(identifier, citeData);
+        } else {
+          bibtex = generateISBNBibTeX(identifier, citeData);
+        }
+        
+        downloadFile(bibtex, "citation.bib", "text/plain");
+      } catch (error) {
+        console.error("Error in fallback BibTeX generation:", error);
+        showNotification("BibTeX endpoint not available and fallback failed: " + error.message, true);
+      }
+    }
+
+    function generateDOIBibTeX(doi, data) {
+      // Simple fallback BibTeX generation for DOI
+      const title = extractTitleFromCitation(data.citation);
+      const year = extractYearFromCitation(data.citation);
+      const author = extractFirstAuthorFromCitation(data.citation);
+      
+      return `@article{${author}${year},
+  title = {${title}},
+  author = {${author}},
+  year = {${year}},
+  doi = {${doi}}
+}`;
+    }
+
+    function generateISBNBibTeX(isbn, data) {
+      // Simple fallback BibTeX generation for ISBN
+      const title = extractTitleFromCitation(data.citation);
+      const year = extractYearFromCitation(data.citation);
+      const author = extractFirstAuthorFromCitation(data.citation);
+      
+      return `@book{${author}${year},
+  title = {${title}},
+  author = {${author}},
+  year = {${year}},
+  isbn = {${isbn}}
+}`;
+    }
+
+    function extractTitleFromCitation(citation) {
+      // Simple extraction of title from citation
+      const htmlRegex = /<em>(.*?)<\/em>/;
+      const match = citation.match(htmlRegex);
+      if (match && match[1]) return match[1];
+      
+      // Fallback if no HTML tags
+      const parts = citation.split('.');
+      if (parts.length > 1) return parts[1].trim();
+      
+      return "Unknown Title";
+    }
+
+    function extractYearFromCitation(citation) {
+      // Simple extraction of year from citation
+      const yearRegex = /\((\d{4})\)/;
+      const match = citation.match(yearRegex);
+      return match ? match[1] : new Date().getFullYear().toString();
+    }
+
+    function extractFirstAuthorFromCitation(citation) {
+      // Simple extraction of first author from citation
+      const parts = citation.split(' (');
+      if (parts.length > 0) {
+        // Take the first author before the comma or &
+        const authorPart = parts[0];
+        const author = authorPart.split(/,\s*|&/)[0];
+        return author || "Unknown Author";
+      }
+      return "Unknown Author";
+    }
+
+    function downloadFile(content, filename, contentType) {
+      const blob = new Blob([content], { type: contentType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    const uploadInput = document.getElementById('upload');
+    const uploadLabel = document.getElementById('upload-label');
+
+    uploadInput.addEventListener('change', function(e) {
+      if (e.target.files.length > 0) {
+        uploadLabel.textContent = e.target.files[0].name;
+      } else {
+        uploadLabel.textContent = "Choose file or drag and drop";
+      }
+    });
+
+    function clearForm() {
+      document.getElementById("citationBody").innerHTML = `
+      <tr>
+        <td colspan="2" style="text-align: center; color: #6c757d; padding: 15px;">
+          Your citations will appear here
+        </td>
+      </tr>`;
+
+      document.getElementById("input").value = "";
+      document.getElementById("upload").value = "";
+      document.getElementById("style").selectedIndex = 0;
+      
+      document.getElementById("input").disabled = false;
+      document.getElementById("input").classList.remove("disabled");
+      document.getElementById("upload").disabled = false;
+      document.getElementById("file-upload-box").classList.remove("disabled");
+      
+      document.getElementById("input-note").style.display = "none";
+      document.getElementById("upload-note").style.display = "none";
+      
+      document.getElementById("upload-label").textContent = "Choose file or drag and drop";
+    }
+
+    function showNotification(message, isError = false) {
+      const notification = document.getElementById("notification");
+      notification.textContent = message;
+      notification.style.background = isError ? "#e74c3c" : "#28a745";
+      notification.classList.add("show");
+      
+      setTimeout(() => {
+        notification.classList.remove("show");
+      }, 3000);
+    }
+
+    // Debug functions
+    async function testEndpoint(endpoint, method, data = null) {
+      const resultElement = document.getElementById("debugResult");
+      resultElement.style.display = "block";
       
       try {
-        logDebug(`Testing ${endpoint} endpoint...`);
-        
         let options = {
           method: method,
           headers: {}
         };
         
-        if (data && !isFormData) {
+        if (data) {
           options.headers['Content-Type'] = 'application/json';
           options.body = JSON.stringify(data);
         }
         
-        if (isFormData) {
-          // Create a simple text file for testing
-          const formData = new FormData();
-          const fileContent = '10.1038/nature12373\n9780451524935';
-          const blob = new Blob([fileContent], { type: 'text/plain' });
-          formData.append('file', blob, 'test.txt');
-          formData.append('style', 'APA');
-          options.body = formData;
-        }
-        
-        const response = await fetch(apiBaseUrl + endpoint, options);
+        const response = await fetch(endpoint, options);
         const responseData = await response.json();
         
         resultElement.innerHTML = `
@@ -231,30 +927,23 @@
           <p>Status: ${response.status} ${response.statusText}</p>
           <pre>${JSON.stringify(responseData, null, 2)}</pre>
         `;
-        resultElement.className = 'test-result success';
-        
-        logDebug(`Endpoint ${endpoint} responded successfully`, 'success');
+        resultElement.style.borderLeft = "4px solid #28a745";
       } catch (error) {
         resultElement.innerHTML = `
           <h4>Error testing ${endpoint}:</h4>
           <p>${error.message}</p>
         `;
-        resultElement.className = 'test-result error';
-        
-        logDebug(`Error testing ${endpoint}: ${error.message}`, 'error');
+        resultElement.style.borderLeft = "4px solid #e74c3c";
       }
     }
-    
-    // Test BibTeX generation
+
     async function testBibTeX(identifier, type) {
-      const resultElement = document.getElementById('bibtexResult');
-      resultElement.style.display = 'block';
+      const resultElement = document.getElementById("debugResult");
+      resultElement.style.display = "block";
       
       try {
-        logDebug(`Testing BibTeX generation for ${identifier} (${type})...`);
-        
-        const response = await fetch(apiBaseUrl + '/cite_bibtex', {
-          method: 'POST',
+        const response = await fetch("/cite_bibtex", {
+          method: "POST",
           headers: {
             'Content-Type': 'application/json'
           },
@@ -265,6 +954,16 @@
           })
         });
         
+        if (response.status === 404) {
+          resultElement.innerHTML = `
+            <h4>Endpoint not found:</h4>
+            <p>The /cite_bibtex endpoint is not available on your server.</p>
+            <p>Please check your FastAPI application code to ensure this endpoint is defined.</p>
+          `;
+          resultElement.style.borderLeft = "4px solid #e74c3c";
+          return;
+        }
+        
         const data = await response.json();
         
         if (data.bibtex) {
@@ -272,135 +971,23 @@
             <h4>BibTeX generated successfully:</h4>
             <pre>${data.bibtex}</pre>
           `;
-          resultElement.className = 'test-result success';
-          logDebug(`BibTeX generated successfully for ${identifier}`, 'success');
+          resultElement.style.borderLeft = "4px solid #28a745";
         } else {
           resultElement.innerHTML = `
             <h4>BibTeX generation failed:</h4>
             <p>Response: ${JSON.stringify(data)}</p>
           `;
-          resultElement.className = 'test-result error';
-          logDebug(`BibTeX generation failed for ${identifier}`, 'error');
+          resultElement.style.borderLeft = "4px solid #e74c3c";
         }
       } catch (error) {
         resultElement.innerHTML = `
           <h4>Error testing BibTeX generation:</h4>
           <p>${error.message}</p>
+          <p>This usually means the /cite_bibtex endpoint is not defined on your server.</p>
         `;
-        resultElement.className = 'test-result error';
-        logDebug(`Error testing BibTeX generation: ${error.message}`, 'error');
+        resultElement.style.borderLeft = "4px solid #e74c3c";
       }
     }
-    
-    // Test download function
-    async function testDownload(type) {
-      const resultElement = document.getElementById('downloadResult');
-      resultElement.style.display = 'block';
-      
-      try {
-        logDebug(`Testing ${type} citation download...`);
-        
-        let bibtexData;
-        
-        if (type === 'single') {
-          // Test single citation download
-          const response = await fetch(apiBaseUrl + '/cite_bibtex', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              identifier: '10.1038/nature12373',
-              type: 'doi',
-              style: 'APA'
-            })
-          });
-          
-          bibtexData = await response.json();
-        } else {
-          // Test multiple citations download
-          const formData = new FormData();
-          const fileContent = '10.1038/nature12373\n9780451524935';
-          const blob = new Blob([fileContent], { type: 'text/plain' });
-          formData.append('file', blob, 'test.txt');
-          formData.append('style', 'APA');
-          
-          const response = await fetch(apiBaseUrl + '/upload', {
-            method: 'POST',
-            body: formData
-          });
-          
-          const data = await response.json();
-          bibtexData = { bibtex: data.map(item => item.bibtex).join('\n\n') };
-        }
-        
-        if (bibtexData.bibtex && !bibtexData.bibtex.includes('undefined')) {
-          resultElement.innerHTML = `
-            <h4>Download test successful:</h4>
-            <pre>${bibtexData.bibtex}</pre>
-          `;
-          resultElement.className = 'test-result success';
-          logDebug(`${type} citation download test successful`, 'success');
-        } else {
-          resultElement.innerHTML = `
-            <h4>Download test failed:</h4>
-            <p>BibTeX content contains "undefined" or is empty</p>
-            <pre>${bibtexData.bibtex || 'No content'}</pre>
-          `;
-          resultElement.className = 'test-result error';
-          logDebug(`${type} citation download test failed - content contains "undefined"`, 'error');
-        }
-      } catch (error) {
-        resultElement.innerHTML = `
-          <h4>Error testing download:</h4>
-          <p>${error.message}</p>
-        `;
-        resultElement.className = 'test-result error';
-        logDebug(`Error testing download: ${error.message}`, 'error');
-      }
-    }
-    
-    // Check environment configuration
-    async function checkEnvironment() {
-      const resultElement = document.getElementById('environmentResult');
-      resultElement.style.display = 'block';
-      
-      try {
-        logDebug('Checking environment configuration...');
-        
-        // Test if we can access the API
-        const response = await fetch(apiBaseUrl + '/');
-        const text = await response.text();
-        
-        let environmentInfo = `
-          <h4>Environment Check:</h4>
-          <p>API Base URL: ${apiBaseUrl}</p>
-          <p>Root endpoint accessible: ${response.status === 200 ? 'Yes' : 'No'}</p>
-        `;
-        
-        // Check if we're on localhost or production
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                           window.location.hostname === '127.0.0.1';
-        
-        environmentInfo += `<p>Environment: ${isLocalhost ? 'Localhost' : 'Production'}</p>`;
-        
-        resultElement.innerHTML = environmentInfo;
-        resultElement.className = 'test-result success';
-        
-        logDebug('Environment check completed successfully', 'success');
-      } catch (error) {
-        resultElement.innerHTML = `
-          <h4>Error checking environment:</h4>
-          <p>${error.message}</p>
-        `;
-        resultElement.className = 'test-result error';
-        logDebug(`Error checking environment: ${error.message}`, 'error');
-      }
-    }
-    
-    // Initialize
-    logDebug('Debug panel initialized');
-    checkEnvironment();
   </script>
 </body>
 </html>
