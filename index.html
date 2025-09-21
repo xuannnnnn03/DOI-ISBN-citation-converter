@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DOI & ISBN Citation Generator - Fixed</title>
+  <title>DOI & ISBN Citation Generator</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -376,37 +376,6 @@
       margin-top: 5px;
       display: none;
     }
-
-    .debug-section {
-      margin-top: 20px;
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: var(--border-radius);
-      border: 1px solid #ddd;
-    }
-
-    .debug-btn {
-      background: #6c757d;
-      margin-right: 10px;
-      margin-bottom: 10px;
-    }
-
-    .debug-result {
-      margin-top: 15px;
-      padding: 15px;
-      background: white;
-      border-radius: var(--border-radius);
-      border: 1px solid #ddd;
-      display: none;
-    }
-
-    pre {
-      background: #2d2d2d;
-      color: #f8f8f2;
-      padding: 15px;
-      border-radius: var(--border-radius);
-      overflow: auto;
-    }
   </style>
 </head>
 <body>
@@ -443,21 +412,6 @@
           <li>Click "Generate Citations"</li>
           <li>Copy or download your citations</li>
         </ol>
-      </div>
-
-      <div class="card">
-        <h2 class="card-title"><i class="fas fa-bug"></i> Debug Tools</h2>
-        <p class="compact-text">If you're experiencing issues with BibTeX download, use these tools to diagnose the problem:</p>
-        
-        <button class="btn debug-btn" onclick="testEndpoint('/cite_bibtex', 'POST', {identifier: '10.1038/nature12373', type: 'doi', style: 'APA'})">
-          Test /cite_bibtex Endpoint
-        </button>
-        
-        <button class="btn debug-btn" onclick="testBibTeX('10.1038/nature12373', 'doi')">
-          Test BibTeX Generation
-        </button>
-        
-        <div id="debugResult" class="debug-result"></div>
       </div>
     </div>
 
@@ -522,7 +476,7 @@
               <option value="txt">TXT</option>
               <option value="bib">BIB</option>
             </select>
-            <button class="btn" onclick="downloadCitation()">
+            <button class="btn" onclick="downloadCitation(document.getElementById('formatSelect').value)">
               <i class="fas fa-download"></i> Download
             </button>
             <button class="btn" onclick="clearForm()">
@@ -559,15 +513,6 @@
           </div>
           <div class="accordion-content">
             <p>We support APA, Harvard, and IEEE citation styles. These cover most academic formatting requirements.</p>
-          </div>
-        </div>
-
-        <div class="accordion">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
-            Why is BibTeX download not working? <i class="fas fa-chevron-down"></i>
-          </div>
-          <div class="accordion-content">
-            <p>This is usually caused by a missing API endpoint on the server. Make sure your FastAPI application includes the <code>/cite_bibtex</code> endpoint. Check the server logs for more details.</p>
           </div>
         </div>
       </div>
@@ -673,199 +618,81 @@
       const rows = document.querySelectorAll("#citationBody td:first-child");
       const text = Array.from(rows).map(row => row.innerText).join("\n\n");
       navigator.clipboard.writeText(text);
-      showNotification("Citation(s) copied to clipboard!");
+      alert("Citation(s) copied to clipboard!");
     }
 
     async function downloadCitation() {
-      const format = document.getElementById("formatSelect").value;
-      const inputText = document.getElementById("input").value.trim();
-      const fileInput = document.getElementById("upload");
-      const style = document.getElementById("style").value;
+  const format = document.getElementById("formatSelect").value;
+  const rows = document.querySelectorAll("#citationBody td:first-child");
+  const text = Array.from(rows).map(row => row.innerText).join("\n\n");
 
-      if (format === "txt") {
-        const rows = document.querySelectorAll("#citationBody td:first-child");
-        const text = Array.from(rows).map(row => row.innerText).join("\n\n");
-        downloadFile(text, "citations.txt", "text/plain");
+  let blob, filename;
+
+  if (format === "txt") {
+    blob = new Blob([text], { type: "text/plain" });
+    filename = "citation.txt";
+  } else if (format === "bib") {
+    const inputText = document.getElementById("input").value.trim();
+    const fileInput = document.getElementById("upload");
+    const style = document.getElementById("style").value;
+
+    if (fileInput.files.length > 0) {
+      // 🔹 case: user uploaded a file - get all BibTeX entries
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("style", style);
+
+      const response = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      
+      // Extract all BibTeX entries from the response array
+      const bibtexEntries = data.map(item => item.bibtex).filter(entry => entry).join("\n\n");
+      
+      blob = new Blob([bibtexEntries], { type: "text/plain" });
+      filename = "citations.bib";
+    } else if (inputText) {
+      // 🔹 case: user typed DOI/ISBN
+      let type = "";
+      if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
+      else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
+      else {
+        alert("Invalid identifier for BibTeX");
         return;
       }
-
-      // For BibTeX format
-      if (fileInput.files.length > 0) {
-        // Multiple citations from file
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-        formData.append("style", style);
-
-        try {
-          const response = await fetch("/upload", {
-            method: "POST",
-            body: formData,
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-          }
-          
-          const data = await response.json();
-          
-          if (Array.isArray(data)) {
-            const bibtexEntries = data.map(item => item.bibtex).filter(entry => entry).join("\n\n");
-            downloadFile(bibtexEntries, "citations.bib", "text/plain");
-          } else {
-            throw new Error("Unexpected response format from server");
-          }
-        } catch (error) {
-          console.error("Error downloading BibTeX:", error);
-          showNotification("Error downloading BibTeX: " + error.message, true);
-        }
-      } else if (inputText) {
-        // Single citation from input
-        let type = "";
-        if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
-        else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
-        else {
-          showNotification("Invalid identifier for BibTeX", true);
-          return;
-        }
-
-        try {
-          const response = await fetch("/cite_bibtex", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identifier: inputText, type, style }),
-          });
-          
-          if (!response.ok) {
-            // If /cite_bibtex endpoint doesn't exist, try fallback to /cite
-            if (response.status === 404) {
-              await fallbackBibTeX(inputText, type, style);
-              return;
-            }
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-          }
-          
-          const data = await response.json();
-          downloadFile(data.bibtex, "citation.bib", "text/plain");
-        } catch (error) {
-          console.error("Error downloading BibTeX:", error);
-          showNotification("Error downloading BibTeX: " + error.message, true);
-        }
-      } else {
-        showNotification("Please enter a DOI/ISBN or upload a file first.", true);
-      }
+      const response = await fetch("/cite_bibtex", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: inputText, type, style }),
+      });
+      const data = await response.json();
+      blob = new Blob([data.bibtex], { type: "text/plain" });
+      filename = "citation.bib";
+    } else {
+      alert("Please enter a DOI/ISBN or upload a file first.");
+      return;
     }
+  }
 
-    async function fallbackBibTeX(identifier, type, style) {
-      // Fallback method if /cite_bibtex endpoint is missing
-      try {
-        // First get the citation data
-        const citeResponse = await fetch("/cite", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identifier, type, style }),
-        });
-        
-        if (!citeResponse.ok) {
-          throw new Error(`Server returned ${citeResponse.status}: ${citeResponse.statusText}`);
-        }
-        
-        const citeData = await citeResponse.json();
-        
-        // Generate BibTeX manually as a fallback
-        let bibtex;
-        if (type === "doi") {
-          bibtex = generateDOIBibTeX(identifier, citeData);
-        } else {
-          bibtex = generateISBNBibTeX(identifier, citeData);
-        }
-        
-        downloadFile(bibtex, "citation.bib", "text/plain");
-      } catch (error) {
-        console.error("Error in fallback BibTeX generation:", error);
-        showNotification("BibTeX endpoint not available and fallback failed: " + error.message, true);
-      }
-    }
-
-    function generateDOIBibTeX(doi, data) {
-      // Simple fallback BibTeX generation for DOI
-      const title = extractTitleFromCitation(data.citation);
-      const year = extractYearFromCitation(data.citation);
-      const author = extractFirstAuthorFromCitation(data.citation);
-      
-      return `@article{${author}${year},
-  title = {${title}},
-  author = {${author}},
-  year = {${year}},
-  doi = {${doi}}
-}`;
-    }
-
-    function generateISBNBibTeX(isbn, data) {
-      // Simple fallback BibTeX generation for ISBN
-      const title = extractTitleFromCitation(data.citation);
-      const year = extractYearFromCitation(data.citation);
-      const author = extractFirstAuthorFromCitation(data.citation);
-      
-      return `@book{${author}${year},
-  title = {${title}},
-  author = {${author}},
-  year = {${year}},
-  isbn = {${isbn}}
-}`;
-    }
-
-    function extractTitleFromCitation(citation) {
-      // Simple extraction of title from citation
-      const htmlRegex = /<em>(.*?)<\/em>/;
-      const match = citation.match(htmlRegex);
-      if (match && match[1]) return match[1];
-      
-      // Fallback if no HTML tags
-      const parts = citation.split('.');
-      if (parts.length > 1) return parts[1].trim();
-      
-      return "Unknown Title";
-    }
-
-    function extractYearFromCitation(citation) {
-      // Simple extraction of year from citation
-      const yearRegex = /\((\d{4})\)/;
-      const match = citation.match(yearRegex);
-      return match ? match[1] : new Date().getFullYear().toString();
-    }
-
-    function extractFirstAuthorFromCitation(citation) {
-      // Simple extraction of first author from citation
-      const parts = citation.split(' (');
-      if (parts.length > 0) {
-        // Take the first author before the comma or &
-        const authorPart = parts[0];
-        const author = authorPart.split(/,\s*|&/)[0];
-        return author || "Unknown Author";
-      }
-      return "Unknown Author";
-    }
-
-    function downloadFile(content, filename, contentType) {
-      const blob = new Blob([content], { type: contentType });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+  // trigger download
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
     const uploadInput = document.getElementById('upload');
     const uploadLabel = document.getElementById('upload-label');
 
     uploadInput.addEventListener('change', function(e) {
       if (e.target.files.length > 0) {
-        uploadLabel.textContent = e.target.files[0].name;
+        uploadLabel.textContent = e.target.files[0].name; // show filename
       } else {
-        uploadLabel.textContent = "Choose file or drag and drop";
+        uploadLabel.textContent = "Choose file or drag and drop"; // reset
       }
     });
 
@@ -881,112 +708,18 @@
       document.getElementById("upload").value = "";
       document.getElementById("style").selectedIndex = 0;
       
+      // Reset the disabled states
       document.getElementById("input").disabled = false;
       document.getElementById("input").classList.remove("disabled");
       document.getElementById("upload").disabled = false;
       document.getElementById("file-upload-box").classList.remove("disabled");
       
+      // Hide the disabled notes
       document.getElementById("input-note").style.display = "none";
       document.getElementById("upload-note").style.display = "none";
       
+      // Reset the upload label
       document.getElementById("upload-label").textContent = "Choose file or drag and drop";
-    }
-
-    function showNotification(message, isError = false) {
-      const notification = document.getElementById("notification");
-      notification.textContent = message;
-      notification.style.background = isError ? "#e74c3c" : "#28a745";
-      notification.classList.add("show");
-      
-      setTimeout(() => {
-        notification.classList.remove("show");
-      }, 3000);
-    }
-
-    // Debug functions
-    async function testEndpoint(endpoint, method, data = null) {
-      const resultElement = document.getElementById("debugResult");
-      resultElement.style.display = "block";
-      
-      try {
-        let options = {
-          method: method,
-          headers: {}
-        };
-        
-        if (data) {
-          options.headers['Content-Type'] = 'application/json';
-          options.body = JSON.stringify(data);
-        }
-        
-        const response = await fetch(endpoint, options);
-        const responseData = await response.json();
-        
-        resultElement.innerHTML = `
-          <h4>Response from ${endpoint}:</h4>
-          <p>Status: ${response.status} ${response.statusText}</p>
-          <pre>${JSON.stringify(responseData, null, 2)}</pre>
-        `;
-        resultElement.style.borderLeft = "4px solid #28a745";
-      } catch (error) {
-        resultElement.innerHTML = `
-          <h4>Error testing ${endpoint}:</h4>
-          <p>${error.message}</p>
-        `;
-        resultElement.style.borderLeft = "4px solid #e74c3c";
-      }
-    }
-
-    async function testBibTeX(identifier, type) {
-      const resultElement = document.getElementById("debugResult");
-      resultElement.style.display = "block";
-      
-      try {
-        const response = await fetch("/cite_bibtex", {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            identifier: identifier,
-            type: type,
-            style: 'APA'
-          })
-        });
-        
-        if (response.status === 404) {
-          resultElement.innerHTML = `
-            <h4>Endpoint not found:</h4>
-            <p>The /cite_bibtex endpoint is not available on your server.</p>
-            <p>Please check your FastAPI application code to ensure this endpoint is defined.</p>
-          `;
-          resultElement.style.borderLeft = "4px solid #e74c3c";
-          return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.bibtex) {
-          resultElement.innerHTML = `
-            <h4>BibTeX generated successfully:</h4>
-            <pre>${data.bibtex}</pre>
-          `;
-          resultElement.style.borderLeft = "4px solid #28a745";
-        } else {
-          resultElement.innerHTML = `
-            <h4>BibTeX generation failed:</h4>
-            <p>Response: ${JSON.stringify(data)}</p>
-          `;
-          resultElement.style.borderLeft = "4px solid #e74c3c";
-        }
-      } catch (error) {
-        resultElement.innerHTML = `
-          <h4>Error testing BibTeX generation:</h4>
-          <p>${error.message}</p>
-          <p>This usually means the /cite_bibtex endpoint is not defined on your server.</p>
-        `;
-        resultElement.style.borderLeft = "4px solid #e74c3c";
-      }
     }
   </script>
 </body>
