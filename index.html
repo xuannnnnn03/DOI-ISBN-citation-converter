@@ -347,16 +347,35 @@
     }
 
     .file-upload-box {
-  border: 2px dashed #ccc;
-  padding: 15px;
-  text-align: center;
-  cursor: pointer;
-  border-radius: 8px;
-}
-#upload-label {
-  color: #555;
-}
+      border: 2px dashed #ccc;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+    
+    .file-upload-box.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background-color: #f5f5f5;
+    }
+    
+    #upload-label {
+      color: #555;
+    }
+    
+    input[type="text"].disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
 
+    .input-disabled-note {
+      font-size: 0.8rem;
+      color: #e74c3c;
+      margin-top: 5px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -379,8 +398,8 @@
           <p>10.1016/S1874-1029(15)30001-x</p>
           
           <p><strong>Example ISBNs:</strong></p>
-          <p>9781455728657 (13-digit)</p>
-          <p>0131101633 (10-digit)</p>
+          <p>9781455728657</p>
+          <p>9780128205815</p>
         </div>
       </div>
 
@@ -402,16 +421,17 @@
         
         <div class="form-group">
           <label for="input"><i class="fas fa-keyboard"></i> Enter DOI/ISBN:</label>
-          <input type="text" id="input" placeholder="e.g., 10.1109/5.771073 or 9781455728657" oninput="disableUpload()">
+          <input type="text" id="input" placeholder="e.g., 10.1109/5.771073 or 9781455728657">
+          <div class="input-disabled-note" id="input-note">Clear the uploaded file to enable text input</div>
         </div>
         
         <div class="form-group">
           <label for="upload"><i class="fas fa-file-upload"></i> Or Upload a List (.txt):</label>
           <div class="file-upload-box" id="file-upload-box">
-  <input type="file" id="upload" accept=".txt" hidden>
-  <label for="upload" id="upload-label">Choose file or drag and drop</label>
-</div>
-
+            <input type="file" id="upload" accept=".txt" hidden>
+            <label for="upload" id="upload-label">Choose file or drag and drop</label>
+          </div>
+          <div class="input-disabled-note" id="upload-note">Clear the text input to enable file upload</div>
         </div>
         
         <div class="form-group">
@@ -440,13 +460,12 @@
               </tr>
             </thead>
             <tbody id="citationBody">
-  <tr>
-    <td colspan="2" style="text-align: center; color: #6c757d; padding: 15px;">
-      Your citations will appear here
-    </td>
-  </tr>
-</tbody>
-
+              <tr>
+                <td colspan="2" style="text-align: center; color: #6c757d; padding: 15px;">
+                  Your citations will appear here
+                </td>
+              </tr>
+            </tbody>
           </table>
           
           <div class="btn-group">
@@ -458,9 +477,8 @@
               <option value="bib">BIB</option>
             </select>
             <button class="btn" onclick="downloadCitation(document.getElementById('formatSelect').value)">
-  <i class="fas fa-download"></i> Download
-</button>
-
+              <i class="fas fa-download"></i> Download
+            </button>
             <button class="btn" onclick="clearForm()">
               <i class="fas fa-trash"></i> Clear
             </button>
@@ -503,107 +521,162 @@
 
   <div class="notification" id="notification">Citation copied to clipboard!</div>
 
-
-<script>
-
-  function toggleAccordion(element) {
-  element.classList.toggle('active');
-  element.nextElementSibling.classList.toggle('active');
-}
-
-async function handleGenerate() {
-  const citationBody = document.getElementById("citationBody");
-  citationBody.innerHTML = "<tr><td colspan='2'>Generating...</td></tr>";
-
-  const fileInput = document.getElementById("upload");
-  const inputText = document.getElementById("input").value.trim();
-  const style = document.getElementById("style").value;
-
-  if (fileInput.files.length > 0) {
-    const formData = new FormData();
-    formData.append("file", fileInput.files[0]);
-    formData.append("style", style);
-
-    const response = await fetch("/upload", {
-      method: "POST",
-      body: formData,
+  <script>
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set up event listeners for mutual exclusion
+      const inputField = document.getElementById('input');
+      const fileUpload = document.getElementById('upload');
+      const fileUploadBox = document.getElementById('file-upload-box');
+      const inputNote = document.getElementById('input-note');
+      const uploadNote = document.getElementById('upload-note');
+      
+      // Listen for input in the text field
+      inputField.addEventListener('input', function() {
+        if (this.value.trim() !== '') {
+          // Disable file upload when text input has content
+          fileUpload.disabled = true;
+          fileUploadBox.classList.add('disabled');
+          uploadNote.style.display = 'block';
+        } else {
+          // Enable file upload when text input is empty
+          fileUpload.disabled = false;
+          fileUploadBox.classList.remove('disabled');
+          uploadNote.style.display = 'none';
+        }
+      });
+      
+      // Listen for file selection
+      fileUpload.addEventListener('change', function() {
+        if (this.files.length > 0) {
+          // Disable text input when a file is selected
+          inputField.disabled = true;
+          inputField.classList.add('disabled');
+          inputNote.style.display = 'block';
+        } else {
+          // Enable text input when no file is selected
+          inputField.disabled = false;
+          inputField.classList.remove('disabled');
+          inputNote.style.display = 'none';
+        }
+      });
     });
-    const data = await response.json();
-    citationBody.innerHTML = Array.isArray(data) ? data.map(d =>
-      `<tr><td>${formatCitationHTML(d.citation)}</td><td>${d.in_text}</td></tr>`
-    ).join("") :
-      `<tr><td>${formatCitationHTML(data.citation)}</td><td>${data.in_text}</td></tr>`;
-  } else if (inputText) {
-    let type = "";
-    if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
-    else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
-    else {
-      citationBody.innerHTML = "<tr><td colspan='2'>Invalid DOI or ISBN.</td></tr>";
-      return;
+
+    function toggleAccordion(element) {
+      element.classList.toggle('active');
+      element.nextElementSibling.classList.toggle('active');
     }
 
-const response = await fetch("/cite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: inputText, type, style }),
-    });
-    const data = await response.json();
-    citationBody.innerHTML = `<tr><td>${formatCitationHTML(data.citation)}</td><td>${data.in_text}</td></tr>`;
-  } else {
-    citationBody.innerHTML = "<tr><td colspan='2'>Please provide a DOI, ISBN, or upload a file.</td></tr>";
-  }
-}
+    async function handleGenerate() {
+      const citationBody = document.getElementById("citationBody");
+      citationBody.innerHTML = "<tr><td colspan='2'>Generating...</td></tr>";
 
-function formatCitationHTML(citation) {
-  citation = citation.replace(/\. In\s+/i, '. ');
-  return citation;
-}
+      const fileInput = document.getElementById("upload");
+      const inputText = document.getElementById("input").value.trim();
+      const style = document.getElementById("style").value;
 
-function disableUpload() {
-  const input = document.getElementById("input").value.trim();
-  document.getElementById("upload").disabled = input.length > 0;
-}
+      if (fileInput.files.length > 0) {
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        formData.append("style", style);
+        const response = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+        citationBody.innerHTML = Array.isArray(data) ? data.map(d =>
+          `<tr><td>${formatCitationHTML(d.citation)}</td><td>${d.in_text}</td></tr>`
+        ).join("") :
+          `<tr><td>${formatCitationHTML(data.citation)}</td><td>${data.in_text}</td></tr>`;
+      } else if (inputText) {
+        let type = "";
+        if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
+        else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
+        else {
+          citationBody.innerHTML = "<tr><td colspan='2'>Invalid DOI or ISBN.</td></tr>";
+          return;
+        }
 
-function disableInput() {
-  document.getElementById("input").disabled = document.getElementById("upload").files.length > 0;
-}
+        const response = await fetch("/cite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier: inputText, type, style }),
+        });
+        const data = await response.json();
+        citationBody.innerHTML = `<tr><td>${formatCitationHTML(data.citation)}</td><td>${data.in_text}</td></tr>`;
+      } else {
+        citationBody.innerHTML = "<tr><td colspan='2'>Please provide a DOI, ISBN, or upload a file.</td></tr>";
+      }
+    }
 
-function copyCitation() {
-  const rows = document.querySelectorAll("#citationBody td:first-child");
-  const text = Array.from(rows).map(row => row.innerText).join("\n\n");
-  navigator.clipboard.writeText(text);
-  alert("Citation(s) copied to clipboard!");
-}
+    function formatCitationHTML(citation) {
+      citation = citation.replace(/\. In\s+/i, '. ');
+      return citation;
+    }
 
-async function downloadCitation(format) {
+    function copyCitation() {
+      const rows = document.querySelectorAll("#citationBody td:first-child");
+      const text = Array.from(rows).map(row => row.innerText).join("\n\n");
+      navigator.clipboard.writeText(text);
+      alert("Citation(s) copied to clipboard!");
+    }
+
+    async function downloadCitation() {
+  const format = document.getElementById("formatSelect").value;
   const rows = document.querySelectorAll("#citationBody td:first-child");
   const text = Array.from(rows).map(row => row.innerText).join("\n\n");
 
   let blob, filename;
+
   if (format === "txt") {
     blob = new Blob([text], { type: "text/plain" });
     filename = "citation.txt";
   } else if (format === "bib") {
-    // Fetch bibtex from backend
     const inputText = document.getElementById("input").value.trim();
+    const fileInput = document.getElementById("upload");
     const style = document.getElementById("style").value;
-    let type = "";
-    if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
-    else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
-    else {
-      alert("Invalid identifier for BibTeX");
+
+    if (fileInput.files.length > 0) {
+      // 🔹 case: user uploaded a file - get all BibTeX entries
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("style", style);
+
+      const response = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      
+      // Extract all BibTeX entries from the response array
+      const bibtexEntries = data.map(item => item.bibtex).filter(entry => entry).join("\n\n");
+      
+      blob = new Blob([bibtexEntries], { type: "text/plain" });
+      filename = "citations.bib";
+    } else if (inputText) {
+      // 🔹 case: user typed DOI/ISBN
+      let type = "";
+      if (inputText.startsWith("10.") || inputText.includes("/")) type = "doi";
+      else if (/^\d{9}[\dXx]$|^\d{13}$/.test(inputText)) type = "isbn";
+      else {
+        alert("Invalid identifier for BibTeX");
+        return;
+      }
+      const response = await fetch("/cite_bibtex", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: inputText, type, style }),
+      });
+      const data = await response.json();
+      blob = new Blob([data.bibtex], { type: "text/plain" });
+      filename = "citation.bib";
+    } else {
+      alert("Please enter a DOI/ISBN or upload a file first.");
       return;
     }
-    const response = await fetch("/cite_bibtex", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: inputText, type, style }),
-    });
-    const data = await response.json();
-    blob = new Blob([data.bibtex], { type: "text/plain" });
-    filename = "citation.bib";
   }
 
+  // trigger download
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -611,35 +684,43 @@ async function downloadCitation(format) {
   a.click();
   document.body.removeChild(a);
 }
-const uploadInput = document.getElementById('upload');
-const uploadLabel = document.getElementById('upload-label');
 
-uploadInput.addEventListener('change', function(e) {
-  if (e.target.files.length > 0) {
-    uploadLabel.textContent = e.target.files[0].name; // show filename
-  } else {
-    uploadLabel.textContent = "Choose file or drag and drop"; // reset
-  }
-});
+    const uploadInput = document.getElementById('upload');
+    const uploadLabel = document.getElementById('upload-label');
 
-function clearForm() {
-  document.getElementById("citationBody").innerHTML = `
-  <tr>
-    <td colspan="2" style="text-align: center; color: #6c757d; padding: 15px;">
-      Your citations will appear here
-    </td>
-  </tr>`;
+    uploadInput.addEventListener('change', function(e) {
+      if (e.target.files.length > 0) {
+        uploadLabel.textContent = e.target.files[0].name; // show filename
+      } else {
+        uploadLabel.textContent = "Choose file or drag and drop"; // reset
+      }
+    });
 
-  document.getElementById("input").value = "";
-  document.getElementById("upload").value = "";
-  document.getElementById("style").selectedIndex = 0;
-  document.getElementById("input").disabled = false;
-  document.getElementById("upload").disabled = false;
+    function clearForm() {
+      document.getElementById("citationBody").innerHTML = `
+      <tr>
+        <td colspan="2" style="text-align: center; color: #6c757d; padding: 15px;">
+          Your citations will appear here
+        </td>
+      </tr>`;
 
-   document.getElementById("upload-label").textContent = "Choose file or drag and drop";
-}
-
-
-</script>
+      document.getElementById("input").value = "";
+      document.getElementById("upload").value = "";
+      document.getElementById("style").selectedIndex = 0;
+      
+      // Reset the disabled states
+      document.getElementById("input").disabled = false;
+      document.getElementById("input").classList.remove("disabled");
+      document.getElementById("upload").disabled = false;
+      document.getElementById("file-upload-box").classList.remove("disabled");
+      
+      // Hide the disabled notes
+      document.getElementById("input-note").style.display = "none";
+      document.getElementById("upload-note").style.display = "none";
+      
+      // Reset the upload label
+      document.getElementById("upload-label").textContent = "Choose file or drag and drop";
+    }
+  </script>
 </body>
 </html>
